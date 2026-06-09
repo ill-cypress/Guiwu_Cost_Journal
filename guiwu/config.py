@@ -12,10 +12,13 @@ def _resource_dir() -> Path:
 
 
 def _data_dir() -> Path:
-    """返回可写数据根目录：开发时为项目根目录，打包后为 exe 所在目录。"""
+    """返回可写数据根目录：开发时为项目根目录，打包后为用户目录 ~/.GuiwuCostJournal。"""
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).parent.parent
+        p = Path.home() / ".GuiwuCostJournal"
+    else:
+        p = Path(__file__).parent.parent
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
 
 PROJECT_ROOT = _data_dir()
