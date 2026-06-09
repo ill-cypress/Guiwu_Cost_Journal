@@ -22,6 +22,24 @@ SORT_KEYS = {
 FILTER_OPTS = ["全部", "现役", "退役"]
 
 
+class DebouncedScrollableFrame(ctk.CTkScrollableFrame):
+    """CTkScrollableFrame 在 resize 时每个像素都重新调整内部 frame 宽度，导致 CPU 飙升。
+    这里 override _fit_frame_dimensions_to_canvas，加入 after 防抖。"""
+    def __init__(self, master, **kwargs):
+        self._debounce_id = None
+        super().__init__(master, **kwargs)
+
+    def _fit_frame_dimensions_to_canvas(self, event):
+        if self._debounce_id is not None:
+            self.after_cancel(self._debounce_id)
+        self._debounce_id = self.after(50, self._do_fit)
+
+    def _do_fit(self):
+        self._debounce_id = None
+        if self._orientation == "vertical":
+            self._parent_canvas.itemconfigure(self._create_window_id, width=self._parent_canvas.winfo_width())
+
+
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -81,7 +99,7 @@ class App(ctk.CTk):
         ).pack(side="right")
 
         # Cards
-        self._card_list = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self._card_list = DebouncedScrollableFrame(self, fg_color="transparent")
         self._card_list.pack(fill="both", expand=True, padx=20, pady=(0, 12))
 
         self._card_widgets: list[ItemCard] = []
