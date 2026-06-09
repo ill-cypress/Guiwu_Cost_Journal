@@ -12,7 +12,7 @@ class DatePicker(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent", **kwargs)
         self._command = command
 
-        self._entry = ctk.CTkEntry(self, font=ctk.CTkFont(size=15), height=36)
+        self._entry = ctk.CTkEntry(self, font=ctk.CTkFont(size=15), height=36, corner_radius=18, fg_color="#EEE5C8")
         self._entry.pack(fill="x")
         self._entry.configure(state="readonly")
         self._entry.bind("<Button-1>", self._open_popup)

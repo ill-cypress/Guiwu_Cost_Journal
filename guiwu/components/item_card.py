@@ -13,8 +13,8 @@ class ItemCard(ctk.CTkFrame):
         self.item = item
         self._icon_ref = None
 
-        card_fg = "#E8E8E8" if item.is_retired else "#FCFCFC"
-        text_clr = "#8A8A8A" if item.is_retired else "#333333"
+        card_fg = "#637A5C" if item.is_retired else "#468C38"
+        text_clr = "#E0E0D8" if item.is_retired else "white"
         self.configure(fg_color=card_fg)
 
         # 左侧图标
@@ -54,9 +54,9 @@ class ItemCard(ctk.CTkFrame):
             text_color=text_clr, anchor="w",
         ).pack(anchor="w")
 
-        # 右侧购买日期
+        # 右侧日均成本
         ctk.CTkLabel(
-            self, text=f"购买 {item.buy_date}",
+            self, text=f"日均 ¥{item.daily_cost:,.2f}/天",
             font=ctk.CTkFont(size=13), text_color=text_clr,
         ).pack(side="right", padx=16)
 

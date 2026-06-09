@@ -4,7 +4,7 @@ import customtkinter as ctk
 from datetime import date as date_cls
 from PIL import Image
 
-from guiwu.config import IMAGE_TYPES, ICONS_DIR, DEFAULT_ICON, ICON_MAP
+from guiwu.config import IMAGE_TYPES, ICONS_DIR, DEFAULT_ICON, ICON_MAP, BG_COLOR
 from guiwu.models import Item, AdditionalEntry
 from guiwu.components.date_picker import DatePicker
 
@@ -37,6 +37,7 @@ class ItemForm(ctk.CTkToplevel):
         self.title("编辑物品" if self._is_edit else "添加物品")
         self.resizable(False, False)
         self.grab_set()
+        self.configure(fg_color=BG_COLOR)
 
         self.update_idletasks()
         mw = master.winfo_toplevel()
@@ -52,13 +53,13 @@ class ItemForm(ctk.CTkToplevel):
 
         # 名称
         ctk.CTkLabel(scroll, text="名称 *", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
-        self._name = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36)
+        self._name = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36, corner_radius=18, fg_color="#EEE5C8")
         self._name.insert(0, self._item.name)
         self._name.pack(fill="x", pady=(2, 14))
 
         # 图标
         ctk.CTkLabel(scroll, text="图标", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
-        self._current_image_type = self._item.image_type if self._item.image_type and self._item.image_type not in ("_default",) else "默认图标"
+        self._current_image_type = self._item.image_type if self._item.image_type and self._item.image_type not in ("_default", "default") else "默认图标"
         icon_btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
         icon_btn_frame.pack(anchor="w", pady=(2, 12))
 
@@ -78,7 +79,7 @@ class ItemForm(ctk.CTkToplevel):
 
         # 价格
         ctk.CTkLabel(scroll, text="价格 *", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
-        self._price = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36)
+        self._price = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36, corner_radius=18, fg_color="#EEE5C8")
         if self._item.price:
             self._price.insert(0, f"{self._item.price:.2f}")
         self._price.pack(fill="x", pady=(2, 12))
@@ -108,7 +109,7 @@ class ItemForm(ctk.CTkToplevel):
 
         # 备注
         ctk.CTkLabel(scroll, text="备注", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
-        self._notes = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36)
+        self._notes = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36, corner_radius=18, fg_color="#EEE5C8")
         self._notes.insert(0, self._item.notes)
         self._notes.pack(fill="x", pady=(2, 12))
 
@@ -117,15 +118,17 @@ class ItemForm(ctk.CTkToplevel):
         self._entries_frame = ctk.CTkFrame(scroll, fg_color="transparent")
         self._entries_frame.pack(fill="x")
 
-        for e in self._item.additional_entries:
-            self._add_entry_row(e)
-
-        ctk.CTkButton(
-            scroll, text="+ 添加附加项", width=150, height=34,
+        # "添加附加项" 按钮 — 放在 entries_frame 内，新行插入到按钮之前
+        self._add_entry_btn = ctk.CTkButton(
+            self._entries_frame, text="+ 添加附加项", width=150, height=34,
             fg_color="#1F6EF5", text_color="white",
             corner_radius=17, font=ctk.CTkFont(size=14),
             command=self._add_entry_row,
-        ).pack(pady=(8, 16), anchor="w")
+        )
+        self._add_entry_btn.pack(pady=(8, 0), anchor="w")
+
+        for e in self._item.additional_entries:
+            self._add_entry_row(e)
 
         # 底部按钮
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -155,16 +158,16 @@ class ItemForm(ctk.CTkToplevel):
     def _add_entry_row(self, entry: AdditionalEntry | None = None):
         entry = entry or AdditionalEntry()
         row_frame = ctk.CTkFrame(self._entries_frame, fg_color="transparent")
-        row_frame.pack(fill="x", pady=2)
+        row_frame.pack(before=self._add_entry_btn, fill="x", pady=2)
 
-        name = ctk.CTkEntry(row_frame, width=110, placeholder_text="名称", font=ctk.CTkFont(size=14), height=34)
+        name = ctk.CTkEntry(row_frame, width=110, placeholder_text="名称", font=ctk.CTkFont(size=14), height=34, corner_radius=17, fg_color="#EEE5C8")
         name.insert(0, entry.name)
         name.pack(side="left", padx=(0, 4))
 
         type_var = ctk.StringVar(value=entry.type)
         ctk.CTkOptionMenu(row_frame, variable=type_var, values=["支出", "收入"], width=72, font=ctk.CTkFont(size=14)).pack(side="left", padx=(0, 4))
 
-        amt = ctk.CTkEntry(row_frame, width=80, placeholder_text="金额", font=ctk.CTkFont(size=14), height=34)
+        amt = ctk.CTkEntry(row_frame, width=80, placeholder_text="金额", font=ctk.CTkFont(size=14), height=34, corner_radius=17, fg_color="#EEE5C8")
         if entry.amount:
             amt.insert(0, f"{entry.amount:.2f}")
         amt.pack(side="left", padx=(0, 4))
@@ -207,7 +210,7 @@ class ItemForm(ctk.CTkToplevel):
         popup.geometry("420x460")
         popup.resizable(False, False)
         popup.grab_set()
-        popup.configure(fg_color="#F0F0F0")
+        popup.configure(fg_color=BG_COLOR)
 
         # 居中于父窗口
         popup.update_idletasks()

@@ -4,7 +4,7 @@ import json
 import customtkinter as ctk
 from datetime import date
 
-from guiwu.config import WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_DIR, APP_ICON, PROJECT_ROOT
+from guiwu.config import WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_DIR, APP_ICON, PROJECT_ROOT, BG_COLOR
 from guiwu.database import get_all_items, delete_item as db_delete
 from guiwu.models import Item
 from guiwu.components.stats_bar import StatsBar
@@ -27,6 +27,7 @@ class App(ctk.CTk):
         super().__init__()
         self.title(WINDOW_TITLE)
         self.minsize(600, 400)
+        self.configure(fg_color=BG_COLOR)
         self.iconbitmap(str(ASSETS_DIR / APP_ICON))
 
         self._state_path = PROJECT_ROOT / ".window_state.json"
@@ -38,28 +39,28 @@ class App(ctk.CTk):
         else:
             self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
 
-        # Header
+        # Header — stats card goes below controls
         self._stats_bar = StatsBar(self)
 
         # Controls
         self._ctrl_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self._ctrl_frame.pack(fill="x", padx=16, pady=(4, 8))
+        self._ctrl_frame.pack(fill="x", padx=20, pady=(20, 12))
 
         ctrl_font = ctk.CTkFont(size=14)
 
         self._filter_var = ctk.StringVar(value=self._state.get("filter", FILTER_OPTS[0]))
         ctk.CTkOptionMenu(
             self._ctrl_frame, variable=self._filter_var, values=FILTER_OPTS,
-            width=100, font=ctrl_font, height=34,
+            width=100, font=ctrl_font, height=34, corner_radius=17,
             command=lambda _: self._refresh(),
-        ).pack(side="left", padx=(0, 6))
+        ).pack(side="left", padx=(0, 10))
 
         self._sort_var = ctk.StringVar(value=self._state.get("sort", "购买时间"))
         ctk.CTkOptionMenu(
             self._ctrl_frame, variable=self._sort_var, values=list(SORT_KEYS.keys()),
-            width=120, font=ctrl_font, height=34,
+            width=120, font=ctrl_font, height=34, corner_radius=17,
             command=lambda _: self._refresh(),
-        ).pack(side="left", padx=(0, 6))
+        ).pack(side="left", padx=(0, 10))
 
         self._asc_var = ctk.BooleanVar(value=self._state.get("ascending", True))
         self._asc_btn = ctk.CTkButton(
@@ -68,7 +69,7 @@ class App(ctk.CTk):
             corner_radius=17, font=ctrl_font,
             command=self._toggle_order,
         )
-        self._asc_btn.pack(side="left", padx=(0, 6))
+        self._asc_btn.pack(side="left", padx=(0, 10))
 
         ctk.CTkButton(
             self._ctrl_frame, text="+ 添加物品", width=120, height=34,
@@ -78,10 +79,13 @@ class App(ctk.CTk):
 
         # Cards
         self._card_list = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self._card_list.pack(fill="both", expand=True, padx=16, pady=(0, 12))
+        self._card_list.pack(fill="both", expand=True, padx=20, pady=(0, 12))
 
         self._card_widgets: list[ItemCard] = []
         self._refresh()
+
+        # stats card below controls, above cards (pack after refresh to stay at top)
+        self._stats_bar.pack(fill="x", padx=20, pady=(0, 10), after=self._ctrl_frame)
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -135,7 +139,7 @@ class App(ctk.CTk):
 
         for item in items:
             card = ItemCard(self._card_list, item, on_click=self._open_edit_form)
-            card.pack(fill="x", pady=3)
+            card.pack(fill="x", pady=(0, 8))
             self._card_widgets.append(card)
 
     def _toggle_order(self):
@@ -165,7 +169,7 @@ class App(ctk.CTk):
 
 
 def launch():
-    ctk.set_appearance_mode("system")
+    ctk.set_appearance_mode("light")
     ctk.set_default_color_theme("blue")
     app = App()
     app.mainloop()
