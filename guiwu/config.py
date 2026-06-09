@@ -1,10 +1,27 @@
 """常量配置：数据库路径、图标枚举列表、窗口默认设置等。"""
+from __future__ import annotations
+import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent.parent
-DB_PATH = PROJECT_ROOT / "guiwu.db"
-ICONS_DIR = Path(__file__).parent / "assets" / "icons"
-ASSETS_DIR = Path(__file__).parent / "assets"
+
+def _resource_dir() -> Path:
+    """返回静态资源根目录：开发时为本模块所在目录，PyInstaller 打包后为临时目录。"""
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS) / "guiwu"
+    return Path(__file__).parent
+
+
+def _data_dir() -> Path:
+    """返回可写数据根目录：开发时为项目根目录，打包后为 exe 所在目录。"""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path(__file__).parent.parent
+
+
+PROJECT_ROOT = _data_dir()
+DB_PATH = _data_dir() / "guiwu.db"
+ICONS_DIR = _resource_dir() / "assets" / "icons"
+ASSETS_DIR = _resource_dir() / "assets"
 APP_ICON = "guiwu_icon.ico"
 DEFAULT_ICON = "default"
 

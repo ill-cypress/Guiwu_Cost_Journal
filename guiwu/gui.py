@@ -83,6 +83,7 @@ class App(ctk.CTk):
 
         self._card_widgets: list[ItemCard] = []
         self._refresh()
+        self.update_idletasks()
 
         # stats card below controls, above cards (pack after refresh to stay at top)
         self._stats_bar.pack(fill="x", padx=20, pady=(0, 10), after=self._ctrl_frame)
