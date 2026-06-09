@@ -25,8 +25,8 @@ class StatsBar(ctk.CTkFrame):
             f"日均总成本 ¥{total_daily:,.2f}/天",
         ]
         for t in texts:
-            lbl = ctk.CTkLabel(self, text=t, font=ctk.CTkFont(size=14))
+            lbl = ctk.CTkLabel(self, text=t, font=ctk.CTkFont(size=16))
             lbl.pack(side="left", padx=(0, 20))
             self.labels.append(lbl)
 
-        self.pack(fill="x", padx=16, pady=(12, 4))
+        self.pack(fill="x", padx=16, pady=(16, 8))

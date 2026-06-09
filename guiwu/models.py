@@ -30,7 +30,7 @@ class AdditionalEntry:
 class Item:
     id: Optional[int] = None
     name: str = ""
-    image_type: str = "_default"
+    image_type: str = "default"
     price: float = 0.0
     buy_date: str = ""           # YYYY-MM-DD
     retire_date: str = ""        # YYYY-MM-DD or empty

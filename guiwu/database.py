@@ -18,7 +18,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS items (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             name        TEXT    NOT NULL,
-            image_type  TEXT    NOT NULL DEFAULT '_default',
+            image_type  TEXT    NOT NULL DEFAULT 'default',
             price       REAL    NOT NULL,
             buy_date    TEXT    NOT NULL,
             retire_date TEXT    DEFAULT '',

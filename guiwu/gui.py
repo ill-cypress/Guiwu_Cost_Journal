@@ -1,9 +1,10 @@
 """主窗口 GUI：统计栏、筛选排序栏、卡片列表。"""
 from __future__ import annotations
+import json
 import customtkinter as ctk
 from datetime import date
 
-from guiwu.config import WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT
+from guiwu.config import WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, ASSETS_DIR, APP_ICON, PROJECT_ROOT
 from guiwu.database import get_all_items, delete_item as db_delete
 from guiwu.models import Item
 from guiwu.components.stats_bar import StatsBar
@@ -25,8 +26,17 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title(WINDOW_TITLE)
-        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.minsize(600, 400)
+        self.iconbitmap(str(ASSETS_DIR / APP_ICON))
+
+        self._state_path = PROJECT_ROOT / ".window_state.json"
+        self._state = self._load_state()
+
+        # 恢复上次窗口位置/大小
+        if "geometry" in self._state:
+            self.geometry(self._state["geometry"])
+        else:
+            self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
 
         # Header
         self._stats_bar = StatsBar(self)
@@ -35,28 +45,35 @@ class App(ctk.CTk):
         self._ctrl_frame = ctk.CTkFrame(self, fg_color="transparent")
         self._ctrl_frame.pack(fill="x", padx=16, pady=(4, 8))
 
-        self._filter_var = ctk.StringVar(value=FILTER_OPTS[0])
+        ctrl_font = ctk.CTkFont(size=14)
+
+        self._filter_var = ctk.StringVar(value=self._state.get("filter", FILTER_OPTS[0]))
         ctk.CTkOptionMenu(
             self._ctrl_frame, variable=self._filter_var, values=FILTER_OPTS,
-            width=100, command=lambda _: self._refresh(),
+            width=100, font=ctrl_font, height=34,
+            command=lambda _: self._refresh(),
         ).pack(side="left", padx=(0, 6))
 
-        self._sort_var = ctk.StringVar(value="购买时间")
+        self._sort_var = ctk.StringVar(value=self._state.get("sort", "购买时间"))
         ctk.CTkOptionMenu(
             self._ctrl_frame, variable=self._sort_var, values=list(SORT_KEYS.keys()),
-            width=120, command=lambda _: self._refresh(),
+            width=120, font=ctrl_font, height=34,
+            command=lambda _: self._refresh(),
         ).pack(side="left", padx=(0, 6))
 
-        self._asc_var = ctk.BooleanVar(value=True)
+        self._asc_var = ctk.BooleanVar(value=self._state.get("ascending", True))
         self._asc_btn = ctk.CTkButton(
-            self._ctrl_frame, text="↑ 升序", width=70, height=28,
-            corner_radius=6, command=self._toggle_order,
+            self._ctrl_frame, text="↑ 升序" if self._asc_var.get() else "↓ 降序",
+            width=80, height=34,
+            corner_radius=17, font=ctrl_font,
+            command=self._toggle_order,
         )
-        self._asc_btn.pack(side="left")
+        self._asc_btn.pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            self._ctrl_frame, text="+ 添加物品", width=100, height=28,
-            corner_radius=6, command=self._open_add_form,
+            self._ctrl_frame, text="+ 添加物品", width=120, height=34,
+            corner_radius=17, font=ctrl_font,
+            command=self._open_add_form,
         ).pack(side="right")
 
         # Cards
@@ -66,19 +83,44 @@ class App(ctk.CTk):
         self._card_widgets: list[ItemCard] = []
         self._refresh()
 
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    # ---------- state persist ----------
+
+    def _load_state(self) -> dict:
+        try:
+            if self._state_path.exists():
+                return json.loads(self._state_path.read_text())
+        except Exception:
+            pass
+        return {}
+
+    def _save_state(self):
+        try:
+            self._state_path.write_text(json.dumps({
+                "geometry": self.geometry(),
+                "filter": self._filter_var.get(),
+                "sort": self._sort_var.get(),
+                "ascending": self._asc_var.get(),
+            }))
+        except Exception:
+            pass
+
+    def _on_close(self):
+        self._save_state()
+        self.destroy()
+
     # ---------- data ----------
 
     def _refresh(self):
         items = get_all_items()
 
-        # 筛选
         filt = self._filter_var.get()
         if filt == "现役":
             items = [it for it in items if not it.is_retired]
         elif filt == "退役":
             items = [it for it in items if it.is_retired]
 
-        # 排序
         key_fn = SORT_KEYS[self._sort_var.get()]
         ascending = self._asc_var.get()
         items.sort(key=key_fn, reverse=not ascending)

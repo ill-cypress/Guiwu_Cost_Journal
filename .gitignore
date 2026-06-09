@@ -31,3 +31,5 @@ desktop.ini
 
 # ===== Claude Code =====
 .claude/
+.window_geometry
+.window_state.json

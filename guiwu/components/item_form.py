@@ -2,22 +2,27 @@
 from __future__ import annotations
 import customtkinter as ctk
 from datetime import date as date_cls
+from PIL import Image
 
-from guiwu.config import IMAGE_TYPES, ICONS_DIR, DEFAULT_ICON
+from guiwu.config import IMAGE_TYPES, ICONS_DIR, DEFAULT_ICON, ICON_MAP
 from guiwu.models import Item, AdditionalEntry
 from guiwu.components.date_picker import DatePicker
 
 
 def _available_image_types() -> list[str]:
-    if ICONS_DIR.exists():
-        names = sorted(
-            p.stem for p in ICONS_DIR.glob("*.png")
-            if p.stem != DEFAULT_ICON
-        )
-        if names:
-            names.insert(0, DEFAULT_ICON)
-            return names
-    return [DEFAULT_ICON] + IMAGE_TYPES
+    """返回有对应图标文件的分类名列表。"""
+    types = []
+    for t in IMAGE_TYPES:
+        filename = ICON_MAP.get(t, "")
+        if filename and (ICONS_DIR / f"{filename}.png").exists():
+            types.append(t)
+    return ["默认图标"] + types if types else ["默认图标"] + IMAGE_TYPES
+
+
+def _icon_filename(image_type: str) -> str:
+    if image_type == "默认图标":
+        return DEFAULT_ICON
+    return ICON_MAP.get(image_type, DEFAULT_ICON)
 
 
 class ItemForm(ctk.CTkToplevel):
@@ -30,9 +35,14 @@ class ItemForm(ctk.CTkToplevel):
         self._entry_rows: list[dict] = []
 
         self.title("编辑物品" if self._is_edit else "添加物品")
-        self.geometry("560x640")
         self.resizable(False, False)
         self.grab_set()
+
+        self.update_idletasks()
+        mw = master.winfo_toplevel()
+        fx = mw.winfo_rootx() + (mw.winfo_width() - 560) // 2
+        fy = mw.winfo_rooty() + (mw.winfo_height() - 640) // 2
+        self.geometry(f"560x640+{fx}+{fy}")
 
         self._build()
 
@@ -41,26 +51,40 @@ class ItemForm(ctk.CTkToplevel):
         scroll.pack(fill="both", expand=True, padx=20, pady=(20, 0))
 
         # 名称
-        ctk.CTkLabel(scroll, text="名称 *", anchor="w").pack(fill="x")
-        self._name = ctk.CTkEntry(scroll)
+        ctk.CTkLabel(scroll, text="名称 *", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
+        self._name = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36)
         self._name.insert(0, self._item.name)
-        self._name.pack(fill="x", pady=(2, 12))
+        self._name.pack(fill="x", pady=(2, 14))
 
         # 图标
-        ctk.CTkLabel(scroll, text="图标", anchor="w").pack(fill="x")
-        types = _available_image_types()
-        self._image_var = ctk.StringVar(value=self._item.image_type)
-        ctk.CTkOptionMenu(scroll, variable=self._image_var, values=types).pack(anchor="w", pady=(2, 12))
+        ctk.CTkLabel(scroll, text="图标", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
+        self._current_image_type = self._item.image_type if self._item.image_type and self._item.image_type not in ("_default",) else "默认图标"
+        icon_btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        icon_btn_frame.pack(anchor="w", pady=(2, 12))
+
+        self._icon_preview_img = None
+        self._icon_preview = ctk.CTkLabel(icon_btn_frame, text="", width=36, height=36)
+        self._icon_preview.pack(side="left", padx=(0, 8))
+        self._update_icon_preview(self._current_image_type)
+
+        self._icon_label = ctk.CTkLabel(icon_btn_frame, text=self._current_image_type, font=ctk.CTkFont(size=15))
+        self._icon_label.pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            icon_btn_frame, text="选择图标", width=96, height=34,
+            corner_radius=17, font=ctk.CTkFont(size=14),
+            command=self._open_icon_picker,
+        ).pack(side="left")
 
         # 价格
-        ctk.CTkLabel(scroll, text="价格 *", anchor="w").pack(fill="x")
-        self._price = ctk.CTkEntry(scroll)
+        ctk.CTkLabel(scroll, text="价格 *", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
+        self._price = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36)
         if self._item.price:
             self._price.insert(0, f"{self._item.price:.2f}")
         self._price.pack(fill="x", pady=(2, 12))
 
         # 购买日期
-        ctk.CTkLabel(scroll, text="购买日期 *", anchor="w").pack(fill="x")
+        ctk.CTkLabel(scroll, text="购买日期 *", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
         self._buy_date_picker = DatePicker(scroll)
         self._buy_date_picker.set_date(self._item.buy_date or date_cls.today().isoformat())
         self._buy_date_picker.pack(fill="x", pady=(2, 12))
@@ -69,11 +93,12 @@ class ItemForm(ctk.CTkToplevel):
         self._retired_var = ctk.BooleanVar(value=self._item.is_retired)
         self._retired_cb = ctk.CTkCheckBox(
             scroll, text="已退役", variable=self._retired_var,
+            font=ctk.CTkFont(size=15),
             command=self._toggle_retire_picker,
         )
         self._retired_cb.pack(anchor="w", pady=(2, 4))
 
-        self._retire_date_label = ctk.CTkLabel(scroll, text="退役日期", anchor="w")
+        self._retire_date_label = ctk.CTkLabel(scroll, text="退役日期", anchor="w", font=ctk.CTkFont(size=15))
         self._retire_date_picker = DatePicker(scroll)
         self._retire_date_picker.set_date(self._item.retire_date or date_cls.today().isoformat())
         self._retire_date_picker.pack(fill="x", pady=(2, 12))
@@ -82,13 +107,13 @@ class ItemForm(ctk.CTkToplevel):
             self._retire_date_picker.pack_forget()
 
         # 备注
-        ctk.CTkLabel(scroll, text="备注", anchor="w").pack(fill="x")
-        self._notes = ctk.CTkEntry(scroll)
+        ctk.CTkLabel(scroll, text="备注", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
+        self._notes = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36)
         self._notes.insert(0, self._item.notes)
         self._notes.pack(fill="x", pady=(2, 12))
 
         # 附加项
-        ctk.CTkLabel(scroll, text="附加项", anchor="w", font=ctk.CTkFont(weight="bold")).pack(fill="x", pady=(8, 4))
+        ctk.CTkLabel(scroll, text="附加项", anchor="w", font=ctk.CTkFont(size=15, weight="bold")).pack(fill="x", pady=(8, 4))
         self._entries_frame = ctk.CTkFrame(scroll, fg_color="transparent")
         self._entries_frame.pack(fill="x")
 
@@ -96,9 +121,10 @@ class ItemForm(ctk.CTkToplevel):
             self._add_entry_row(e)
 
         ctk.CTkButton(
-            scroll, text="+ 添加附加项", width=140, height=30,
+            scroll, text="+ 添加附加项", width=150, height=34,
             fg_color="#1F6EF5", text_color="white",
-            corner_radius=8, command=self._add_entry_row,
+            corner_radius=17, font=ctk.CTkFont(size=14),
+            command=self._add_entry_row,
         ).pack(pady=(8, 16), anchor="w")
 
         # 底部按钮
@@ -108,13 +134,13 @@ class ItemForm(ctk.CTkToplevel):
         if self._is_edit:
             ctk.CTkButton(
                 btn_frame, text="删除", fg_color="#D32F2F", hover_color="#B71C1C",
-                width=100, height=34, corner_radius=8,
+                width=110, height=38, corner_radius=19, font=ctk.CTkFont(size=15),
                 command=self._handle_delete,
             ).pack(side="left")
 
         ctk.CTkButton(
             btn_frame, text="保存", fg_color="#2E7D32", hover_color="#1B5E20",
-            width=100, height=34, corner_radius=8,
+            width=110, height=38, corner_radius=19, font=ctk.CTkFont(size=15),
             command=self._handle_save,
         ).pack(side="right")
 
@@ -131,14 +157,14 @@ class ItemForm(ctk.CTkToplevel):
         row_frame = ctk.CTkFrame(self._entries_frame, fg_color="transparent")
         row_frame.pack(fill="x", pady=2)
 
-        name = ctk.CTkEntry(row_frame, width=110, placeholder_text="名称")
+        name = ctk.CTkEntry(row_frame, width=110, placeholder_text="名称", font=ctk.CTkFont(size=14), height=34)
         name.insert(0, entry.name)
         name.pack(side="left", padx=(0, 4))
 
         type_var = ctk.StringVar(value=entry.type)
-        ctk.CTkOptionMenu(row_frame, variable=type_var, values=["支出", "收入"], width=72).pack(side="left", padx=(0, 4))
+        ctk.CTkOptionMenu(row_frame, variable=type_var, values=["支出", "收入"], width=72, font=ctk.CTkFont(size=14)).pack(side="left", padx=(0, 4))
 
-        amt = ctk.CTkEntry(row_frame, width=80, placeholder_text="金额")
+        amt = ctk.CTkEntry(row_frame, width=80, placeholder_text="金额", font=ctk.CTkFont(size=14), height=34)
         if entry.amount:
             amt.insert(0, f"{entry.amount:.2f}")
         amt.pack(side="left", padx=(0, 4))
@@ -148,9 +174,9 @@ class ItemForm(ctk.CTkToplevel):
         dp.pack(side="left", padx=(0, 4))
 
         ctk.CTkButton(
-            row_frame, text="✕", width=28, height=28,
+            row_frame, text="✕", width=32, height=32,
             fg_color="transparent", text_color="#999",
-            hover_color="#FEE", corner_radius=6,
+            hover_color="#FEE", corner_radius=16, font=ctk.CTkFont(size=15),
             command=lambda: self._remove_entry_row(row_frame),
         ).pack(side="left")
 
@@ -166,8 +192,69 @@ class ItemForm(ctk.CTkToplevel):
                 self._entry_rows.pop(i)
                 break
 
+    def _update_icon_preview(self, image_type: str):
+        filename = _icon_filename(image_type)
+        try:
+            img = Image.open(ICONS_DIR / f"{filename}.png").resize((36, 36))
+            self._icon_preview_img = ctk.CTkImage(img, size=(36, 36))
+            self._icon_preview.configure(image=self._icon_preview_img)
+        except Exception:
+            self._icon_preview.configure(image=None)
+
+    def _open_icon_picker(self):
+        popup = ctk.CTkToplevel(self)
+        popup.title("选择图标")
+        popup.geometry("420x460")
+        popup.resizable(False, False)
+        popup.grab_set()
+        popup.configure(fg_color="#F0F0F0")
+
+        # 居中于父窗口
+        popup.update_idletasks()
+        pw, ph = popup.winfo_width(), popup.winfo_height()
+        fx = self.winfo_rootx() + (self.winfo_width() - pw) // 2
+        fy = self.winfo_rooty() + (self.winfo_height() - ph) // 2
+        popup.geometry(f"+{fx}+{fy}")
+
+        scroll = ctk.CTkScrollableFrame(popup, fg_color="transparent")
+        scroll.pack(fill="both", expand=True, padx=12, pady=12)
+
+        row_frame = None
+        for i, t in enumerate(_available_image_types()):
+            if i % 4 == 0:
+                row_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+                row_frame.pack(fill="x", pady=3)
+
+            filename = _icon_filename(t)
+            frame = ctk.CTkFrame(row_frame, fg_color="transparent")
+            frame.pack(side="left", expand=True, fill="both", padx=4)
+
+            try:
+                img = Image.open(ICONS_DIR / f"{filename}.png").resize((44, 44))
+                ctk_img = ctk.CTkImage(img, size=(44, 44))
+                img_label = ctk.CTkLabel(frame, image=ctk_img, text="")
+                img_label.image = ctk_img
+                img_label.pack()
+            except Exception:
+                pass
+
+            ctk.CTkLabel(frame, text=t, font=ctk.CTkFont(size=13), text_color="#333333", anchor="center").pack()
+
+            img_label.bind("<Button-1>", lambda e, v=t: self._on_icon_selected(v, popup))
+            for child in frame.winfo_children():
+                child.bind("<Button-1>", lambda e, v=t: self._on_icon_selected(v, popup))
+            frame.bind("<Button-1>", lambda e, v=t: self._on_icon_selected(v, popup))
+
+    def _on_icon_selected(self, image_type: str, popup: ctk.CTkToplevel):
+        self._current_image_type = image_type
+        self._icon_label.configure(text=image_type)
+        self._update_icon_preview(image_type)
+        popup.destroy()
+
     def _collect(self) -> Item:
-        image_type = self._image_var.get() or DEFAULT_ICON
+        image_type = self._current_image_type
+        if image_type == "默认图标":
+            image_type = DEFAULT_ICON
         price = float(self._price.get() or 0)
         buy_date = self._buy_date_picker.get().strip()
         retire_date = self._retire_date_picker.get().strip() if self._retired_var.get() else ""

@@ -12,7 +12,7 @@ class DatePicker(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent", **kwargs)
         self._command = command
 
-        self._entry = ctk.CTkEntry(self)
+        self._entry = ctk.CTkEntry(self, font=ctk.CTkFont(size=15), height=36)
         self._entry.pack(fill="x")
         self._entry.configure(state="readonly")
         self._entry.bind("<Button-1>", self._open_popup)
@@ -59,34 +59,38 @@ class DatePicker(ctk.CTkFrame):
         nav = ctk.CTkFrame(self._popup, fg_color="transparent")
         nav.pack(fill="x", padx=8, pady=(8, 4))
 
-        arrow_font = ctk.CTkFont(size=16, weight="bold")
+        arrow_font = ctk.CTkFont(size=18, weight="bold")
 
         ctk.CTkButton(
-            nav, text="«", width=28, height=28, font=arrow_font,
+            nav, text="«", width=32, height=32, font=arrow_font,
+            corner_radius=16,
             command=lambda: self._change_year(-1),
         ).pack(side="left", padx=(0, 2))
 
         ctk.CTkButton(
-            nav, text="‹", width=28, height=28, font=arrow_font,
+            nav, text="‹", width=32, height=32, font=arrow_font,
+            corner_radius=16,
             command=lambda: self._change_month(-1),
         ).pack(side="left")
 
         self._month_label = ctk.CTkLabel(
             nav, text=f"{year}年{month}月",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=16, weight="bold"),
             text_color="#222222",
         )
         self._month_label.pack(side="left", expand=True)
 
         # 先 pack 年按钮 (»)，让它占据最右边
         ctk.CTkButton(
-            nav, text="»", width=28, height=28, font=arrow_font,
+            nav, text="»", width=32, height=32, font=arrow_font,
+            corner_radius=16,
             command=lambda: self._change_year(1),
         ).pack(side="right")
 
         # 再 pack 月按钮 (›)，它会自动放在 » 的左边（更靠近标签）
         ctk.CTkButton(
-            nav, text="›", width=28, height=28, font=arrow_font,
+            nav, text="›", width=32, height=32, font=arrow_font,
+            corner_radius=16,
             command=lambda: self._change_month(1),
         ).pack(side="right", padx=(0, 0))
 
@@ -96,7 +100,7 @@ class DatePicker(ctk.CTkFrame):
         for d in ("一", "二", "三", "四", "五", "六", "日"):
             ctk.CTkLabel(
                 dow_frame, text=d, width=32,
-                font=ctk.CTkFont(size=11, weight="bold"),
+                font=ctk.CTkFont(size=13, weight="bold"),
                 text_color="#555555",
             ).pack(side="left", expand=True)
 
@@ -161,8 +165,8 @@ class DatePicker(ctk.CTkFrame):
                     tc = "#CCCCCC"
 
                 btn = ctk.CTkButton(
-                    self._days_frame, text=str(day), width=32, height=28,
-                    corner_radius=6,
+                    self._days_frame, text=str(day), width=34, height=30,
+                    corner_radius=8, font=ctk.CTkFont(size=13),
                     fg_color=fg, text_color=tc,
                     hover_color="#E8E8E8",
                     state="disabled" if future else "normal",
