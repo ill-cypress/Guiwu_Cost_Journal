@@ -28,7 +28,10 @@ class App(ctk.CTk):
         self.title(WINDOW_TITLE)
         self.minsize(600, 400)
         self.configure(fg_color=BG_COLOR)
-        self.iconbitmap(str(ASSETS_DIR / APP_ICON))
+        try:
+            self.iconbitmap(str(ASSETS_DIR / APP_ICON))
+        except Exception:
+            pass
 
         self._state_path = PROJECT_ROOT / ".window_state.json"
         self._state = self._load_state()
