@@ -53,8 +53,9 @@ class ItemForm(ctk.CTkToplevel):
 
         # 名称
         ctk.CTkLabel(scroll, text="名称 *", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
-        self._name = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36, corner_radius=18, fg_color="#EEE5C8")
-        self._name.insert(0, self._item.name)
+        self._name_var = ctk.StringVar(value=self._item.name)
+        self._name_var.trace_add("write", lambda *_: self._update_save_button())
+        self._name = ctk.CTkEntry(scroll, textvariable=self._name_var, font=ctk.CTkFont(size=15), height=36, corner_radius=18, fg_color="#EEE5C8")
         self._name.pack(fill="x", pady=(2, 14))
 
         # 图标
@@ -79,14 +80,17 @@ class ItemForm(ctk.CTkToplevel):
 
         # 价格
         ctk.CTkLabel(scroll, text="价格 *", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
-        self._price = ctk.CTkEntry(scroll, font=ctk.CTkFont(size=15), height=36, corner_radius=18, fg_color="#EEE5C8")
+        self._price_var = ctk.StringVar()
         if self._item.price:
-            self._price.insert(0, f"{self._item.price:.2f}")
+            self._price_var.set(f"{self._item.price:.2f}")
+        self._price_var.trace_add("write", lambda *_: self._update_save_button())
+        self._price_var.trace_add("write", self._make_decimal_filter(self._price_var))
+        self._price = ctk.CTkEntry(scroll, textvariable=self._price_var, font=ctk.CTkFont(size=15), height=36, corner_radius=18, fg_color="#EEE5C8")
         self._price.pack(fill="x", pady=(2, 12))
 
         # 购买日期
         ctk.CTkLabel(scroll, text="购买日期 *", anchor="w", font=ctk.CTkFont(size=15)).pack(fill="x")
-        self._buy_date_picker = DatePicker(scroll)
+        self._buy_date_picker = DatePicker(scroll, command=self._on_form_field_changed)
         self._buy_date_picker.set_date(self._item.buy_date or date_cls.today().isoformat())
         self._buy_date_picker.pack(fill="x", pady=(2, 12))
 
@@ -141,11 +145,13 @@ class ItemForm(ctk.CTkToplevel):
                 command=self._handle_delete,
             ).pack(side="left")
 
-        ctk.CTkButton(
-            btn_frame, text="保存", fg_color="#2E7D32", hover_color="#1B5E20",
-            width=110, height=38, corner_radius=19, font=ctk.CTkFont(size=15),
+        self._save_btn = ctk.CTkButton(
+            btn_frame, text="保存", width=110, height=38,
+            corner_radius=19, font=ctk.CTkFont(size=15),
             command=self._handle_save,
-        ).pack(side="right")
+        )
+        self._save_btn.pack(side="right")
+        self._update_save_button()
 
     def _toggle_retire_picker(self):
         if self._retired_var.get():
@@ -160,16 +166,19 @@ class ItemForm(ctk.CTkToplevel):
         row_frame = ctk.CTkFrame(self._entries_frame, fg_color="transparent")
         row_frame.pack(before=self._add_entry_btn, fill="x", pady=2)
 
-        name = ctk.CTkEntry(row_frame, width=110, placeholder_text="名称", font=ctk.CTkFont(size=14), height=34, corner_radius=17, fg_color="#EEE5C8")
-        name.insert(0, entry.name)
+        name_var = ctk.StringVar(value=entry.name)
+        name_var.trace_add("write", lambda *_: self._update_save_button())
+        name = ctk.CTkEntry(row_frame, textvariable=name_var, width=110, placeholder_text="名称", font=ctk.CTkFont(size=14), height=34, corner_radius=17, fg_color="#EEE5C8")
         name.pack(side="left", padx=(0, 4))
 
         type_var = ctk.StringVar(value=entry.type)
         ctk.CTkOptionMenu(row_frame, variable=type_var, values=["支出", "收入"], width=72, font=ctk.CTkFont(size=14)).pack(side="left", padx=(0, 4))
 
-        amt = ctk.CTkEntry(row_frame, width=80, placeholder_text="金额", font=ctk.CTkFont(size=14), height=34, corner_radius=17, fg_color="#EEE5C8")
+        amt_var = ctk.StringVar()
         if entry.amount:
-            amt.insert(0, f"{entry.amount:.2f}")
+            amt_var.set(f"{entry.amount:.2f}")
+        amt_var.trace_add("write", self._make_decimal_filter(amt_var))
+        amt = ctk.CTkEntry(row_frame, textvariable=amt_var, width=80, placeholder_text="金额", font=ctk.CTkFont(size=14), height=34, corner_radius=17, fg_color="#EEE5C8")
         amt.pack(side="left", padx=(0, 4))
 
         dp = DatePicker(row_frame)
@@ -187,6 +196,8 @@ class ItemForm(ctk.CTkToplevel):
             "frame": row_frame, "name": name, "type": type_var,
             "amount": amt, "date": dp,
         })
+        if hasattr(self, "_save_btn"):
+            self._update_save_button()
 
     def _remove_entry_row(self, frame):
         for i, r in enumerate(self._entry_rows):
@@ -194,6 +205,16 @@ class ItemForm(ctk.CTkToplevel):
                 r["frame"].destroy()
                 self._entry_rows.pop(i)
                 break
+        self._update_save_button()
+
+    def _on_form_field_changed(self, *_):
+        self._update_save_button()
+
+    def _update_save_button(self):
+        if self._validate():
+            self._save_btn.configure(fg_color="#2E7D32", hover_color="#1B5E20", border_width=0, text_color="white")
+        else:
+            self._save_btn.configure(fg_color="transparent", hover_color="#E8F5E9", border_width=2, border_color="#2E7D32", text_color="#2E7D32")
 
     def _update_icon_preview(self, image_type: str):
         filename = _icon_filename(image_type)
@@ -258,7 +279,7 @@ class ItemForm(ctk.CTkToplevel):
         image_type = self._current_image_type
         if image_type == "默认图标":
             image_type = DEFAULT_ICON
-        price = float(self._price.get() or 0)
+        price = float(self._price_var.get() or 0)
         buy_date = self._buy_date_picker.get().strip()
         retire_date = self._retire_date_picker.get().strip() if self._retired_var.get() else ""
 
@@ -276,7 +297,7 @@ class ItemForm(ctk.CTkToplevel):
 
         return Item(
             id=self._item.id,
-            name=self._name.get().strip(),
+            name=self._name_var.get().strip(),
             image_type=image_type,
             price=price,
             buy_date=buy_date,
@@ -285,10 +306,33 @@ class ItemForm(ctk.CTkToplevel):
             additional_entries=entries,
         )
 
+    def _validate(self):
+        name_ok = bool(self._name_var.get().strip())
+        price_ok = bool(self._price_var.get().strip())
+        buy_date_ok = bool(self._buy_date_picker.get().strip())
+        entry_names_ok = all(bool(r["name"].get().strip()) for r in self._entry_rows)
+        return name_ok and price_ok and buy_date_ok and entry_names_ok
+
+    def _make_decimal_filter(self, var):
+        def _filter(*_):
+            val = var.get()
+            filtered = []
+            has_dot = False
+            for c in val:
+                if c.isdigit():
+                    filtered.append(c)
+                elif c == "." and not has_dot:
+                    filtered.append(c)
+                    has_dot = True
+            result = "".join(filtered)
+            if result != val:
+                var.set(result)
+        return _filter
+
     def _handle_save(self):
-        item = self._collect()
-        if not item.name or not item.buy_date:
+        if not self._validate():
             return
+        item = self._collect()
         self._on_save(item)
         self.destroy()
 

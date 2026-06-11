@@ -36,16 +36,18 @@ class ItemCard(ctk.CTkFrame):
             text_color=text_clr, anchor="w",
         ).pack(anchor="w")
 
-        if item.is_retired:
+        prefix = "使用" if item.is_retired else "已用"
+        has_extra = bool(item.additional_entries)
+        if has_extra:
             detail = (
-                f"使用 {item.days_used} 天 · "
+                f"{prefix} {item.days_used} 天 · "
                 f"买入 ¥{item.price:,.2f} · "
                 f"净成本 ¥{item.net_cost:,.2f} · "
                 f"日均 ¥{item.daily_cost:,.2f}/天"
             )
         else:
             detail = (
-                f"已用 {item.days_used} 天 · "
+                f"{prefix} {item.days_used} 天 · "
                 f"¥{item.price:,.2f} · "
                 f"日均 ¥{item.daily_cost:,.2f}/天"
             )
